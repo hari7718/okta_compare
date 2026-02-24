@@ -1,6 +1,6 @@
 import logging
 
-from scripts.okta_view_utils import ensure_domain_str, get_paginated, get_json
+from scripts.oktasnapshot_utils import ensure_domain_str, get_paginated
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,20 +18,14 @@ def _headers(api_token):
 
 def _get_rules(base, api_token, policy_id):
     url = f"{base}/api/v1/policies/{policy_id}/rules"
-    return get_paginated(url, _headers(api_token), "Error fetching password policy rules") or []
+    return get_paginated(url, _headers(api_token), "Error fetching session policy rules") or []
 
 
-def _settings_to_string(settings):
-    if not isinstance(settings, dict):
-        return ""
-    return ", ".join([f"{k}: {v}" for k, v in settings.items()])
-
-
-def get_password_policies(domain_url, api_token):
+def get_global_session_policies(domain_url, api_token):
     base = ensure_domain_str(domain_url).rstrip("/")
-    logger.info("Fetching password policies for OktaView.")
-    url = f"{base}/api/v1/policies?type=PASSWORD"
-    policies = get_paginated(url, _headers(api_token), "Error fetching password policies") or []
+    logger.info("Fetching global session policies for OktaView.")
+    url = f"{base}/api/v1/policies?type=OKTA_SIGN_ON"
+    policies = get_paginated(url, _headers(api_token), "Error fetching session policies") or []
 
     policy_rows = []
     rule_rows = []
@@ -45,13 +39,12 @@ def get_password_policies(domain_url, api_token):
             "Name": policy.get("name"),
             "Description": policy.get("description"),
             "Priority": policy.get("priority"),
-            "Provider": (policy.get("provider", {}) or {}).get("type"),
-            "Complexity Settings": _settings_to_string((policy.get("settings", {}) or {}).get("complexity", {})),
-            "Lockout Settings": _settings_to_string((policy.get("settings", {}) or {}).get("lockout", {})),
+            "Conditions": policy.get("conditions"),
             "Rules": ", ".join([r.get("name") for r in rules if r.get("name")]),
         })
 
         for rule in rules:
+            conditions = rule.get("conditions", {}) or {}
             rule_rows.append({
                 "Policy ID": policy_id,
                 "Policy Name": policy.get("name"),
@@ -59,8 +52,12 @@ def get_password_policies(domain_url, api_token):
                 "Rule Name": rule.get("name"),
                 "Status": rule.get("status"),
                 "Priority": rule.get("priority"),
-                "Conditions People": (rule.get("conditions", {}) or {}).get("people", {}),
-                "Conditions Network": (rule.get("conditions", {}) or {}).get("network", {}),
+                "Conditions People": conditions.get("people", {}),
+                "Conditions Network": conditions.get("network", {}),
+                "Conditions AuthContext": conditions.get("authContext", {}),
+                "Conditions Risk": conditions.get("risk", {}),
+                "Conditions RiskScore": conditions.get("riskScore", {}),
+                "Conditions IdentityProvider": conditions.get("identityProvider", {}),
                 "Actions": rule.get("actions", {}),
             })
 

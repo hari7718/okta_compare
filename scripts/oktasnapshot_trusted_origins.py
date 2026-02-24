@@ -21,7 +21,5 @@ def get_trusted_origins_view(domain_url, api_token):
             "Origin": origin.get("origin"),
             "Status": origin.get("status"),
             "Scopes": json.dumps(origin.get("scopes") or [], sort_keys=True, default=str),
-            "Created": origin.get("created"),
-            "Last Updated": origin.get("lastUpdated"),
         })
     return rows

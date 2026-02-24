@@ -274,7 +274,7 @@
       <p class="page-subtitle">Inventory and visualize tenant configuration in one place.</p>
     </div>
     <section class="card">
-      <form class="guide-form" method="POST" action="/snapshot" id="okta-view-form">
+      <form class="guide-form" method="POST" action="/snapshot" id="oktasnapshot-form">
         <div class="form-grid">
           <div class="env-card">
             <h2 class="section-title">OktaSnapshot Environment</h2>
@@ -297,7 +297,7 @@
   </main>
 </div>
 <script>
-  const viewForm = document.getElementById("okta-view-form");
+  const viewForm = document.getElementById("oktasnapshot-form");
   const viewLoader = document.getElementById("loader");
   if (viewForm && viewLoader) {
     viewForm.addEventListener("submit", () => {

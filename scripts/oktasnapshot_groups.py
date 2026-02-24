@@ -14,13 +14,11 @@ def get_groups_view(domain_url, api_token):
     groups = get_groups(domain_url, api_token) or []
     rows = []
     for group in groups:
+        if group.get("type") != "OKTA_GROUP":
+            continue
         profile = group.get("profile") or {}
         rows.append({
-            "Group ID": group.get("id"),
             "Group Name": profile.get("name"),
             "Description": profile.get("description"),
-            "Type": group.get("type"),
-            "Created At": group.get("created"),
-            "Last Updated At": group.get("lastUpdated"),
         })
     return rows

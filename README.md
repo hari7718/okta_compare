@@ -1,14 +1,45 @@
-# OktaCompare
+# OktaVerse
+
+`OktaVerse` is a unified toolkit for Okta environment analysis, documentation, comparison, and migration.
+
+This repository currently includes multiple utilities under the `OktaVerse` umbrella:
+
+- `OktaCompare`: Compare configuration between two Okta environments and generate a report + CSV export.
+- `OktaSnapshot`: Capture and export a structured snapshot of a single Okta org's configuration.
+- `OktaEvaluate`: Assessment/readiness utility (currently a placeholder page in this codebase).
+- `OktaMigrate`: Migration workflow utility (currently a placeholder page in this codebase).
+
+## OktaVerse Structure
+
+- `OktaCompare` (`/`): Main comparison workflow with report generation and CSV exports.
+- `OktaSnapshot` (`/snapshot`): Snapshot guide generation with PDF and DOCX export support.
+- `OktaEvaluate` (`/evaluate`): Placeholder route for evaluation workflows.
+- `OktaMigrate` (`/migrate`): Placeholder route for migration workflows.
+
+## OktaCompare
 
 Compare configuration between two Okta environments and generate a report + CSV export.
 
-## Legend
+## Docker
+Build the image:
+```
+docker build -t okta-compare .
+```
+
+Run the container:
+```
+docker run --rm -p 5000:5000 okta-compare
+```
+
+Open: `http://localhost:5000`
+
+## OktaCompare Legend
 - Critical: high-risk mismatch or missing object in an environment.
 - Medium: configuration mismatch for a matched object.
 - Low: extra object found in one environment.
 - Match: values are identical.
 
-## Entities and Compared Parameters
+## OktaCompare Entities and Compared Parameters
 
 ### Groups
 - Keyed by group profile name.
@@ -130,7 +161,7 @@ Compare configuration between two Okta environments and generate a report + CSV 
 - Keyed by origin name (or origin URL).
 - Compares: settings signature (IDs/links/timestamps excluded).
 
-## Export Behavior
+## OktaCompare Export Behavior
 - Triggered by the “Export Comparison Report” button on the report page.
 - Exports a CSV with columns: Category, Object, Attribute, Env A Value, Env B Value, Difference Type, Impact, Recommended Action, Priority.
 - Priority values are text only (Critical/Medium/Low/Match); icons are not included.

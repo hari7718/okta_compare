@@ -1,6 +1,6 @@
 import logging
 
-from scripts.okta_view_utils import ensure_domain_str, get_paginated
+from scripts.oktasnapshot_utils import ensure_domain_str, get_paginated
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,14 +18,14 @@ def _headers(api_token):
 
 def _get_rules(base, api_token, policy_id):
     url = f"{base}/api/v1/policies/{policy_id}/rules"
-    return get_paginated(url, _headers(api_token), "Error fetching session policy rules") or []
+    return get_paginated(url, _headers(api_token), "Error fetching MFA enrollment policy rules") or []
 
 
-def get_global_session_policies(domain_url, api_token):
+def get_mfa_enrollment_policies(domain_url, api_token):
     base = ensure_domain_str(domain_url).rstrip("/")
-    logger.info("Fetching global session policies for OktaView.")
-    url = f"{base}/api/v1/policies?type=OKTA_SIGN_ON"
-    policies = get_paginated(url, _headers(api_token), "Error fetching session policies") or []
+    logger.info("Fetching MFA enrollment policies for OktaView.")
+    url = f"{base}/api/v1/policies?type=MFA_ENROLL"
+    policies = get_paginated(url, _headers(api_token), "Error fetching MFA enrollment policies") or []
 
     policy_rows = []
     rule_rows = []
@@ -37,10 +37,9 @@ def get_global_session_policies(domain_url, api_token):
             "ID": policy_id,
             "Status": policy.get("status"),
             "Name": policy.get("name"),
-            "Description": policy.get("description"),
             "Priority": policy.get("priority"),
             "Conditions": policy.get("conditions"),
-            "Rules": ", ".join([r.get("name") for r in rules if r.get("name")]),
+            "Settings": policy.get("settings"),
         })
 
         for rule in rules:

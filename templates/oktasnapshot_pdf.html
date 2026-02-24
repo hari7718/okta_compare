@@ -104,6 +104,13 @@
     {% endif %}
     {% if section.rows %}
     {% if section.id in ["org-settings", "security-settings"] %}
+    {% set security_headers = [
+      "Security notification emails",
+      "CAPTCHA integration",
+      "User enumeration prevention",
+      "Protect against password-based attacks",
+      "Okta ThreatInsight settings"
+    ] %}
     <table>
       <thead>
         <tr>
@@ -113,14 +120,23 @@
       </thead>
       <tbody>
         {% for row in section.rows %}
+        {% set is_header = section.id == "security-settings" and row.get("Setting", "") in security_headers %}
         <tr>
-          <td class="field-col">{{ row.get("Setting", "") }}</td>
+          <td class="field-col">
+            {% if is_header %}
+              <strong>{{ row.get("Setting", "") }}</strong>
+            {% else %}
+              {{ row.get("Setting", "") }}
+            {% endif %}
+          </td>
           {% set cell = row.get("Value", "") %}
           <td class="value-col">
-            {% if cell is mapping or (cell is sequence and cell is not string) %}
-              {{ cell|default({})|tojson }}
-            {% else %}
-              {{ cell|default("") }}
+            {% if not is_header %}
+              {% if cell is mapping or (cell is sequence and cell is not string) %}
+                {{ cell|default({})|tojson }}
+              {% else %}
+                {{ cell|default("") }}
+              {% endif %}
             {% endif %}
           </td>
         </tr>

@@ -1,6 +1,6 @@
 import logging
 
-from scripts.okta_view_utils import ensure_domain_str, get_paginated
+from scripts.oktasnapshot_utils import ensure_domain_str, get_paginated
 
 logging.basicConfig(
     level=logging.INFO,

@@ -19,8 +19,6 @@ def get_realms_view(domain_url, api_token):
             "Name": realm.get("name") or realm.get("label") or realm.get("displayName"),
             "Description": realm.get("description"),
             "Status": realm.get("status"),
-            "Created": realm.get("created"),
-            "Last Updated": realm.get("lastUpdated"),
         })
     return rows
 

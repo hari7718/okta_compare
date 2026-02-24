@@ -37,7 +37,7 @@ from modules.realms import compare_realms, compare_realm_assignments
 from modules.profile_schema_user import compare_user_profile_schema
 from modules.profile_mappings import compare_profile_mappings
 from modules.trusted_origins import compare_trusted_origins
-from modules.okta_view_guide import build_okta_view_guide
+from modules.oktasnapshot_guide import build_oktasnapshot_guide
 
 # ----------------------------------------------------
 # Extractor modules
@@ -47,8 +47,8 @@ from scripts.extract_groups import get_groups
 app = Flask(__name__)
 app.secret_key = "okta_compare_secret_key"
 LAST_EXPORT = {"diffs": [], "matches": []}
-OKTA_VIEW_EXPORT = {"rows": []}
-OKTA_VIEW_GUIDE = {"sections": [], "domain": ""}
+OKTASNAPSHOT_EXPORT = {"rows": []}
+OKTASNAPSHOT_GUIDE = {"sections": [], "domain": ""}
 
 # ---------------------------------------------------
 # Logging
@@ -1440,31 +1440,31 @@ def handle_unexpected_error(error):
     ), 500
 
 @app.route("/snapshot", methods=["GET"])
-def okta_view():
+def oktasnapshot_form():
     logger.info("Rendering OktaSnapshot form.")
-    return render_template("okta_view_form.html")
+    return render_template("oktasnapshot_form.html")
 
 
 @app.route("/snapshot", methods=["POST"])
-def okta_view_generate():
+def oktasnapshot_generate():
     domain = (request.form.get("domain") or "").strip() or DEFAULT_ENV_A_DOMAIN
     api_token = (request.form.get("api_token") or "").strip() or DEFAULT_ENV_A_TOKEN
 
     logger.info("Generating OktaSnapshot guide for %s.", domain)
-    sections, export_rows = build_okta_view_guide(domain, api_token)
-    OKTA_VIEW_EXPORT["rows"] = export_rows
-    OKTA_VIEW_GUIDE["sections"] = sections
-    OKTA_VIEW_GUIDE["domain"] = domain
+    sections, export_rows = build_oktasnapshot_guide(domain, api_token)
+    OKTASNAPSHOT_EXPORT["rows"] = export_rows
+    OKTASNAPSHOT_GUIDE["sections"] = sections
+    OKTASNAPSHOT_GUIDE["domain"] = domain
 
-    return redirect(url_for("okta_view_guide"))
+    return redirect(url_for("oktasnapshot_guide"))
 
 
 @app.route("/snapshot/guide", methods=["GET"])
-def okta_view_guide():
-    sections = OKTA_VIEW_GUIDE.get("sections") or []
-    domain = OKTA_VIEW_GUIDE.get("domain") or DEFAULT_ENV_A_DOMAIN
+def oktasnapshot_guide():
+    sections = OKTASNAPSHOT_GUIDE.get("sections") or []
+    domain = OKTASNAPSHOT_GUIDE.get("domain") or DEFAULT_ENV_A_DOMAIN
     return render_template(
-        "okta_view_report.html",
+        "oktasnapshot_report.html",
         guide_sections=sections,
         guide_domain=domain,
         guide_generated_at=datetime.now(ZoneInfo("Australia/Brisbane")).strftime(
@@ -1474,9 +1474,9 @@ def okta_view_guide():
 
 
 @app.route("/snapshot/export", methods=["GET"])
-def okta_view_export():
-    sections = OKTA_VIEW_GUIDE.get("sections") or []
-    domain = OKTA_VIEW_GUIDE.get("domain") or DEFAULT_ENV_A_DOMAIN
+def oktasnapshot_export():
+    sections = OKTASNAPSHOT_GUIDE.get("sections") or []
+    domain = OKTASNAPSHOT_GUIDE.get("domain") or DEFAULT_ENV_A_DOMAIN
     if not sections:
         logger.warning("No OktaSnapshot guide data found for export.")
     try:
@@ -1490,7 +1490,7 @@ def okta_view_export():
         ), 500
 
     html = render_template(
-        "okta_view_pdf.html",
+        "oktasnapshot_pdf.html",
         guide_sections=sections,
         guide_domain=domain,
     )
@@ -1499,7 +1499,135 @@ def okta_view_export():
         io.BytesIO(pdf),
         mimetype="application/pdf",
         as_attachment=True,
-        download_name="okta_view_guide.pdf",
+        download_name="oktasnapshot_guide.pdf",
+    )
+
+
+def _docx_cell_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, sort_keys=True, indent=2, default=str)
+    return str(value)
+
+
+def _docx_set_cell_shading(cell, fill):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), fill)
+    cell._tc.get_or_add_tcPr().append(shading)
+
+
+def _docx_style_header_cell(cell, text, fill="D9E2F3"):
+    from docx.shared import RGBColor
+
+    cell.text = text
+    for paragraph in cell.paragraphs:
+        for run in paragraph.runs:
+            run.bold = True
+            run.font.color.rgb = RGBColor(31, 41, 55)
+    _docx_set_cell_shading(cell, fill)
+
+
+def _docx_stripe_row(table, row_idx, fill):
+    for cell in table.rows[row_idx].cells:
+        _docx_set_cell_shading(cell, fill)
+
+
+def _docx_set_table_borders(table):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        element = OxmlElement(f"w:{edge}")
+        element.set(qn("w:val"), "single")
+        element.set(qn("w:sz"), "4")
+        element.set(qn("w:space"), "0")
+        element.set(qn("w:color"), "D9DDE5")
+        borders.append(element)
+    tbl_pr.append(borders)
+
+
+@app.route("/snapshot/export/docx", methods=["GET"])
+def oktasnapshot_export_docx():
+    sections = OKTASNAPSHOT_GUIDE.get("sections") or []
+    domain = OKTASNAPSHOT_GUIDE.get("domain") or DEFAULT_ENV_A_DOMAIN
+    if not sections:
+        logger.warning("No OktaSnapshot guide data found for Word export.")
+    try:
+        from docx import Document
+        from docx.shared import RGBColor
+    except Exception:
+        logger.exception("python-docx not available for Word export.")
+        return render_template(
+            "oktacompare_error.html",
+            title="Word Export Unavailable",
+            message="Word export requires python-docx. Please install it and retry.",
+        ), 500
+
+    document = Document()
+    document.add_heading("OktaSnapshot Configuration", level=0)
+    document.add_paragraph(f"Generated for {domain}.")
+
+    for style_name, color in (
+        ("Normal", RGBColor(0, 0, 0)),
+        ("Heading 1", RGBColor(31, 41, 55)),
+        ("Heading 2", RGBColor(31, 41, 55)),
+    ):
+        try:
+            style = document.styles[style_name]
+        except KeyError:
+            style = None
+        if style:
+            style.font.color.rgb = color
+
+    for section in sections:
+        document.add_heading(section.get("title") or section.get("id") or "Section", level=1)
+        rows = section.get("rows") or []
+        if not rows:
+            document.add_paragraph("No data available.")
+            continue
+
+        if section.get("id") in ["org-settings", "security-settings"]:
+            table = document.add_table(rows=len(rows) + 1, cols=2)
+            table.style = "Light Shading Accent 1"
+            _docx_set_table_borders(table)
+            _docx_style_header_cell(table.cell(0, 0), "Setting")
+            _docx_style_header_cell(table.cell(0, 1), "Value")
+            for idx, row in enumerate(rows, start=1):
+                table.cell(idx, 0).text = _docx_cell_value(row.get("Setting", ""))
+                table.cell(idx, 1).text = _docx_cell_value(row.get("Value", ""))
+                _docx_stripe_row(table, idx, "EFF5FF" if idx % 2 == 1 else "FFFFFF")
+        else:
+            for row in rows:
+                columns = row.keys() if section.get("id") == "applications" else section.get("columns") or row.keys()
+                table = document.add_table(rows=len(columns) + 1, cols=2)
+                table.style = "Light Shading Accent 1"
+                _docx_set_table_borders(table)
+                _docx_style_header_cell(table.cell(0, 0), "Field")
+                _docx_style_header_cell(table.cell(0, 1), "Value")
+                for idx, col in enumerate(columns, start=1):
+                    table.cell(idx, 0).text = _docx_cell_value(col)
+                    table.cell(idx, 1).text = _docx_cell_value(row.get(col, ""))
+                    _docx_stripe_row(table, idx, "EFF5FF" if idx % 2 == 1 else "FFFFFF")
+
+        document.add_paragraph("")
+
+    output = io.BytesIO()
+    document.save(output)
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        as_attachment=True,
+        download_name="oktasnapshot_guide.docx",
     )
 
 
@@ -1525,4 +1653,4 @@ def assets(filename):
 # ---------------------------------------------------
 if __name__ == "__main__":
     logger.info("Starting OktaCompare Flask app.")
-    app.run(debug=False, port=5000)
+    app.run(host="0.0.0.0", debug=False, port=5000)

@@ -9,6 +9,47 @@ logging.basicConfig(
 logger = logging.getLogger("okta_compare")
 
 
+def _role_label(role):
+    if isinstance(role, str):
+        return role
+    if not isinstance(role, dict):
+        return None
+    for key in ("label", "name", "type", "roleType"):
+        value = role.get(key)
+        if value:
+            return value
+    nested = role.get("role")
+    if isinstance(nested, dict):
+        nested_label = _role_label(nested)
+        if nested_label:
+            return nested_label
+    if role.get("id"):
+        return role.get("id")
+    return None
+
+
+def _extract_admin_roles(item):
+    if not isinstance(item, dict):
+        return ""
+    roles = []
+    for key in ("roles", "adminRoles", "assignedRoles", "roleAssignments", "roleAssignment", "role"):
+        value = item.get(key)
+        if not value:
+            continue
+        if isinstance(value, list):
+            roles.extend(value)
+        else:
+            roles.append(value)
+    labels = []
+    for role in roles:
+        label = _role_label(role)
+        if label:
+            labels.append(label)
+    if not labels:
+        return ""
+    return ", ".join(sorted({str(label) for label in labels}))
+
+
 def get_admin_assignments_view(domain_url, api_token):
     logger.info("Fetching admin assignments for OktaView.")
     users = get_admin_users(domain_url, api_token) or []
@@ -22,6 +63,7 @@ def get_admin_assignments_view(domain_url, api_token):
             "Display Name": user.get("displayName"),
             "Email": user.get("email"),
             "Login": user.get("login"),
+            "Admin Roles": _extract_admin_roles(user),
         })
 
     group_rows = []
@@ -29,6 +71,7 @@ def get_admin_assignments_view(domain_url, api_token):
         group_rows.append({
             "Group ID": group.get("groupId"),
             "Group Name": group.get("name"),
+            "Admin Roles": _extract_admin_roles(group),
         })
 
     app_rows = []

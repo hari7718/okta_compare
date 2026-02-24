@@ -5,7 +5,7 @@ from scripts.extract_authorization_servers import (
     get_authorization_server_policies,
     get_authorization_server_policy_rules,
 )
-from scripts.okta_view_utils import ensure_domain_str, get_json
+from scripts.oktasnapshot_utils import ensure_domain_str, get_json
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,7 +1,7 @@
 import json
 import logging
 
-from scripts.okta_view_utils import ensure_domain_str, get_paginated, get_json
+from scripts.oktasnapshot_utils import ensure_domain_str, get_paginated, get_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -99,6 +99,13 @@ def _get_app_settings(app):
     sign_on_mode = app.get("signOnMode")
     settings = app.get("settings", {}) or {}
     app_settings = settings.get("app", {}) or {}
+    if app.get("name") == "okta_org2org":
+        return {
+            "ACS URL": app_settings.get("acsUrl"),
+            "Audience Restriction": app_settings.get("audRestriction"),
+            "Base URL": app_settings.get("baseUrl"),
+            "IdP ID": app_settings.get("idpId"),
+        }
     if sign_on_mode == "BOOKMARK":
         visibility = app.get("visibility", {}) or {}
         app_links = visibility.get("appLinks") or {}
@@ -154,15 +161,14 @@ def get_applications(domain_url, api_token):
         row = {}
         row["Name"] = app.get("label")
         row["Status"] = app.get("status")
-        if sign_on_mode != "BOOKMARK":
-            row["Type"] = sign_on_mode
+        row["Type"] = sign_on_mode
         for key, value in settings.items():
             row[key] = value
+        row["Groups"] = _get_group_names(base, api_token, app.get("id"))
         if sign_on_mode != "BOOKMARK":
             row["Okta Internal Name"] = app.get("name")
             row["Username Format"] = user_name_template.get("template")
             row["Logo"] = logo.get("href")
-            row["Groups"] = _get_group_names(base, api_token, app.get("id"))
             row["Features"] = ", ".join(app.get("features") or [])
             row["Access Policy Name"] = access_policy_name
         rows.append(row)

@@ -15,11 +15,8 @@ def get_custom_admin_roles_view(domain_url, api_token):
     rows = []
     for role in roles:
         rows.append({
-            "Role ID": role.get("id"),
             "Label": role.get("label"),
             "Description": role.get("description"),
             "Is Cloneable": role.get("isCloneable"),
-            "Created": role.get("created"),
-            "Last Updated": role.get("lastUpdated"),
         })
     return rows

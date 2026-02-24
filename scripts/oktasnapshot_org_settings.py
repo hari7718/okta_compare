@@ -1,6 +1,6 @@
 import logging
 
-from scripts.okta_view_utils import ensure_domain_str, get_json
+from scripts.oktasnapshot_utils import ensure_domain_str, get_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,11 +52,6 @@ def get_org_settings(domain_url, api_token):
         "State": data.get("state"),
         "Support Phone Number": data.get("supportPhoneNumber"),
         "Website": data.get("website"),
-        "ID": data.get("id"),
-        "Created": data.get("created"),
-        "Last Updated": data.get("lastUpdated"),
-        "Expires At": data.get("expiresAt"),
-        "Status": data.get("status"),
         "Subdomain": data.get("subdomain"),
         "Billing Contact Email": _get_contact_email(base, api_token, "billing"),
         "Technical Contact Email": _get_contact_email(base, api_token, "technical"),

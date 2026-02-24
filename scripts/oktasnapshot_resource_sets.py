@@ -20,11 +20,8 @@ def get_resource_sets_view(domain_url, api_token):
         set_id = resource_set.get("id")
         label = resource_set.get("label") or resource_set.get("name")
         set_rows.append({
-            "Resource Set ID": set_id,
             "Label": label,
             "Description": resource_set.get("description"),
-            "Created": resource_set.get("created"),
-            "Last Updated": resource_set.get("lastUpdated"),
         })
 
         resources = get_resource_set_resources(domain_url, api_token, set_id) or []
